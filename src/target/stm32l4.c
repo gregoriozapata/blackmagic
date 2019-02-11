@@ -144,6 +144,7 @@ enum ID_STM32L4 {
 	ID_STM32G07  = 0x460, /* RM0444/454, Rev.1 */
 	ID_STM32L49  = 0x461, /* RM0351, Rev.5 */
 	ID_STM32L4R  = 0x470, /* RM0432, Rev.5 */
+	ID_STM32WB55 = 0x495, /* No reference manual so long */
 };
 
 bool stm32l4_probe(target *t)
@@ -156,11 +157,14 @@ bool stm32l4_probe(target *t)
 	uint16_t sram2_size = 0;
 	uint16_t sram3_size = 0;
 
-	uint32_t idcode_reg = STM32L4_DBGMCU_IDCODE_PHYS;
 	ADIv5_AP_t *ap = cortexm_ap(t);
-	if (ap->dp->idcode == 0x0BC11477)
-		idcode_reg = STM32G0_DBGMCU_IDCODE_PHYS;
-	uint32_t idcode = target_mem_read32(t, idcode_reg) & 0xfff;
+	uint32_t idcode = (ap->dp->targetid >> 16) & 0xfff;
+	if (!idcode) {
+		uint32_t idcode_reg = STM32L4_DBGMCU_IDCODE_PHYS;
+		if (ap->dp->idcode == 0x0BC11477)
+			idcode_reg = STM32G0_DBGMCU_IDCODE_PHYS;
+		idcode = target_mem_read32(t, idcode_reg) & 0xfff;
+	}
 	switch(idcode) {
 	case ID_STM32G07:
 		designator = "STM32G07";
@@ -201,6 +205,11 @@ bool stm32l4_probe(target *t)
 		sram3_size = 384;
 		/* 4 k block in dual bank, 8 k in single bank.*/
 		dual_bank = true;
+		break;
+	case ID_STM32WB55:
+		designator = "STM32WB55";
+		sram1_size = 192;
+		sram2_size =  64;
 		break;
 	default:
 		return false;
